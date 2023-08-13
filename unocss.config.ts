@@ -2,14 +2,11 @@ import { promises as fs } from 'node:fs'
 import type { Awaitable } from 'unocss'
 import { defineConfig, presetIcons, presetUno } from 'unocss'
 import { compareColors, stringToColor } from '@iconify/utils/lib/colors'
-import type { IconSet } from '@iconify/tools'
 import {
   SVG,
   deOptimisePaths,
-  importDirectory,
   parseColors, runSVGO,
 } from '@iconify/tools'
-import type { CustomIconLoader } from '@iconify/utils/lib/loader/types'
 import { FileSystemIconLoader } from '@iconify/utils/lib/loader/node-loaders'
 
 async function optimizeColors(svg: SVG) {
@@ -42,6 +39,9 @@ interface Options {
   callback?: (svg: SVG) => Awaitable<void>
 }
 
+/**
+ * Load custom icon set using FileSystemIconLoader
+ */
 function loadCustomFSIconSet(dir: string, options: Options = {}) {
   const {
     runSVGO: runSVGFlag = true,
@@ -63,41 +63,6 @@ function loadCustomFSIconSet(dir: string, options: Options = {}) {
 
     return svg.toString()
   })
-}
-
-/**
- * Load custom icon set
- */
-function loadCustomIconSet(): CustomIconLoader {
-  const promise = new Promise<IconSet>((resolve, reject) => {
-    importDirectory('assets/svg', {
-      prefix: 'svg',
-    }).then((iconSet) => {
-      iconSet.forEach(async (name) => {
-        const svg = iconSet.toSVG(name)!
-
-        await optimizeColors(svg)
-
-        // Optimise
-        runSVGO(svg)
-
-        // Update paths for compatibility with old software
-        await deOptimisePaths(svg)
-
-        // Update icon in icon set
-        iconSet.fromSVG(name, svg)
-      }).then(() => {
-        resolve(iconSet)
-      }).catch((err) => {
-        reject(err)
-      })
-    })
-  })
-
-  return async (name) => {
-    const iconSet = await promise
-    return iconSet.toSVG(name)?.toMinifiedString()
-  }
 }
 
 /**
